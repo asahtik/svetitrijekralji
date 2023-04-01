@@ -1,2 +1,2 @@
-const api = "localhost:3000/api";
+const api = "88.200.37.122:4200";
 const apiSecure = false;

@@ -8,6 +8,8 @@ import "package:hribolazci/scores.dart";
 import "package:latlong2/latlong.dart";
 import "package:geolocator/geolocator.dart";
 
+import "http.dart" as http;
+
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
 
@@ -21,7 +23,13 @@ class _MapPageState extends State<MapPage> {
   double lat = 46.056946;
   double long = 14.505751;
 
-  var _mapController = MapController();
+  bool showAllHills = true;
+
+  List<HillEntry> allHills = [];
+  List<HillEntry> flaggedHills = [];
+  List<EdgeEntry> edges = [];
+
+  final _mapController = MapController();
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +57,20 @@ class _MapPageState extends State<MapPage> {
                 TileLayer(
                   urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                   userAgentPackageName: "si.fri.hribolazci",
+                ),
+                CircleLayer(
+                  circles: allHills.map((h) => CircleMarker(
+                    point: LatLng(h.latitude, h.longitude),
+                    radius: 1000,
+                    borderStrokeWidth: 2,
+                    borderColor: const Color.fromARGB(255, 0, 0, 0),
+                    color: const Color.fromARGB(0, 0, 0, 0),
+                    useRadiusInMeter: true,
+                  )).toList(),
+                ),
+                PolylineLayer(
+                  polylineCulling: true,
+                  polylines: drawEdges(),
                 ),
               ],
             ),
@@ -82,7 +104,10 @@ class _MapPageState extends State<MapPage> {
         padding: const EdgeInsets.fromLTRB(0, 0, 0, 20 + 10),
         child: FloatingActionButton(
           onPressed: () {
-            
+            // TODO
+            getAllHills();
+            getFlaggedHills();
+            getAllEdges();
           },
           tooltip: "Refresh",
           child: const Icon(Icons.refresh),
@@ -112,12 +137,64 @@ class _MapPageState extends State<MapPage> {
     Position position = await _determinePosition();
     lat = position.latitude;
     long = position.longitude;
-    _mapController.move(LatLng(lat, long), 10.0);
+    _mapController.move(LatLng(lat, long), 10);
+  }
+
+  getAllHills() async {
+    var response = await http.getAllHills();
+    if (response != null) {
+      setState(() {
+        allHills = response;
+      });
+    }
+  }
+
+  getAllEdges() async {
+    var response = await http.getAllEdges();
+    if (response != null) {
+      setState(() {
+        edges = response;
+      });
+    }
+  }
+
+  getFlaggedHills() async {
+    var response = await http.getFlaggedHills();
+    print("Flagged hills");
+    if (response != null) {
+      setState(() {
+        flaggedHills = response;
+        print(flaggedHills);
+      });
+    }
+  }
+
+  HillEntry findHillEntry(String hillId) {
+    final list = showAllHills ? allHills : flaggedHills;
+    return list.firstWhere((h) => h.id == hillId);
+  }
+
+  List<Polyline> drawEdges() {
+    return edges.map((e) {
+      final hill1 = findHillEntry(e.hill1);
+      final hill2 = findHillEntry(e.hill2);
+      return Polyline(
+        points: [
+          LatLng(hill1.latitude, hill1.longitude),
+          LatLng(hill2.latitude, hill2.longitude),
+        ],
+        strokeWidth: 1,
+        color: const Color.fromARGB(255, 0, 0, 0),
+      );
+    }).toList();
   }
 
   @override
   initState() {
     super.initState();
+    getAllHills();
+    getFlaggedHills();
+    getAllEdges();
     updatePosition();
   }
 }

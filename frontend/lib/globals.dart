@@ -11,5 +11,54 @@ const secureStorage = FlutterSecureStorage();
 final authStore = AuthStore();
 
 Uri getUri(String path) {
-  return apiSecure ? Uri.https(api, path) : Uri.http(api, path);
+  return apiSecure ? Uri.https(api, path) : Uri.http(api, "api/$path");
+}
+
+class UserEntry {
+  late String id;
+  late String username;
+  late String groupId;
+  late double points;
+
+  UserEntry.fromJson(Map<String, dynamic> json) {
+    id = json["id"];
+    username = json["username"];
+    groupId = json["group"];
+    points = json["points"].toDouble();
+  }
+
+  toJson() {
+    return {
+      "id": id,
+      "username": username,
+      "group": groupId,
+      "points": points,
+    };
+  }
+}
+
+class HillEntry {
+  late String id;
+  late String name;
+  late int height;
+  late double latitude;
+  late double longitude;
+
+  HillEntry.fromJson(Map<String, dynamic> json) {
+    id = json["id"];
+    name = json["name"];
+    height = json["height"];
+    latitude = json["latitude"];
+    longitude = json["longitude"];
+  }
+}
+
+class EdgeEntry {
+  late String hill1;
+  late String hill2;
+
+  EdgeEntry.fromJson(Map<String, dynamic> json) {
+    hill1 = json["hill1"];
+    hill2 = json["hill2"];
+  }
 }
