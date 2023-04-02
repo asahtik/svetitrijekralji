@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Flutter Demo",
+      title: "Hribolazci",
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -44,8 +44,11 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     switch (state) {
       case AppState.initialising:
-        return const Center(
-          child: Text("Hribolazci"),
+        return Container(
+          color: Colors.white,
+          child: const Center(
+            child: DefaultTextStyle(style: TextStyle(color: Colors.blue, fontSize: 50), child: Text("Hribolazci"))
+          )
         );
       case AppState.tologin:
         return const LoginPage();

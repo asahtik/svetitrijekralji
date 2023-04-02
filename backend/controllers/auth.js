@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 async function login(req, res) {
-  axios.post('http://88.200.37.122:3000/api/collections/users/auth-with-password', req.body)
+  axios.post('http://localhost:3000/api/collections/users/auth-with-password', req.body)
   .then(function (response) {
     res.status(200).json(response.data);
   })
@@ -14,77 +14,93 @@ async function login(req, res) {
   });
 }
 
-async function createOrJoinGroup(req, res) {
-  axios.get(`http://88.200.37.122:3000/api/collections/groups/records?filter=(name='${req.body.groupname}')`, {
-    headers: {
-      'Authorization': req.body.authentication
+async function createGroup(name) {
+  const newGroup = await axios.post('http://localhost:3000/api/collections/groups/records', 
+    {
+      'name' : name
     }
-  })
-  .then(function (response) {
-    console.log(response);
-    if (response.data.items.length == 0) {
-      axios.post('http://88.200.37.122:3000/api/collections/groups/records',{
-        'name' : req.body.groupname
-        },{
-        headers : {
-          'Authorization': req.body.authentication
-        }})
-      .then(function (groupidresponse) {
-        axios.get(`http://88.200.37.122:3000/api/collections/hills/records`, {
-          headers: {
-            'Authorization': req.body.authentication
-          }
-        }).then(function (response) {
-
-          createSubgraph(groupidresponse.data.id, response, req);
-        }).catch(function (error) {
-            if (error.response) {
-              //console.log(error)
-                res.status(error.response.status).json(error.response.data)
-            } else {
-              //console.log(error);
-                res.status(500).json(error);
-            }
-          });
-      })
-      .catch(function (error) {
-        if (error.response) {
-            res.status(error.response.status).json(error.response.data)
-        } else {
-            res.status(500).json(error);
-        }
-      });
-    } else {
-      res.status(200).json(response.data);
-    }
-  })
-  .catch(function (error) {
-    if (error.response) {
-        res.status(error.response.status).json(error.response.data)
-    } else {
-        res.status(500).json(error);
-    }
-  });
+  );
+  return newGroup.data;
 }
 
-function createSubgraph(groupid, response, req) {
-  var subgraph = createRandomSubgraph(response.data.items);
-  console.log(subgraph);
-  for (let i = 0; i < subgraph.length; i++) {
-    axios.post('http://88.200.37.122:3000/api/collections/edges/records', {
-      'group' : groupid,
-      'hill1': subgraph[i][0],
-      'hill2': subgraph[i][1]
-    }, {
-      headers : {
-        'Authorization': req.body.authentication
-      }
-    });
+async function createAscents(hills, groupid) {
+  try {
+    for (let i = 0; i < hills.length; i++) {
+      const hill = hills[i];
+      await axios.post('http://localhost:3000/api/collections/ascents/records', 
+        {
+          'hill': hill.id,
+          'group': groupid
+        }
+      );
+    }
+  } catch (e) {
+    if (e.response) {
+      res.status(e.response.status).json(e.response.statusText);
+    } else {
+      console.error(e);
+      res.status(500).json({"error": "Internal error"});
+    }
   }
 }
 
+async function register(req, res) {
+  try {
+    const groupsResponse = await axios.get(`http://localhost:3000/api/collections/groups/records?filter=(name='${req.body.groupname}')`);
+    if (groupsResponse.data.items.length == 0) {
+      const newGroup = await createGroup(req.body.groupname);
+      req.body.group = newGroup.id;
+      const data = await axios.post('http://localhost:3000/api/collections/users/records', req.body);
+      const hillsResponse =  await axios.get('http://localhost:3000/api/collections/hills/records?page=1&perPage=1000');
+      createSubgraph(newGroup.id, hillsResponse, req);
+      createAscents(hillsResponse.data.items, newGroup.id);
+      res.status(200).json(data.data);
+    } else {
+      req.body.group = groupsResponse.data.items[0].id;
+      const data = await axios.post('http://localhost:3000/api/collections/users/records', req.body);
+      res.status(200).json(data.data);
+    }
+  } catch (e) {
+    if (e.response) {
+      res.status(e.response.status).json(e.response.statusText);
+    } else {
+      console.error(e);
+      res.status(500).json({"error": "Internal error"});
+    }
+  }
+}
+
+async function createSubgraph(groupid, response) {
+  var subgraph = createRandomSubgraph(response.data.items);
+  try {
+    for (let i = 0; i < subgraph.length; i++) {
+      await axios.post('http://localhost:3000/api/collections/edges/records', {
+        'group' : groupid,
+        'hill1': subgraph[i][0],
+        'hill2': subgraph[i][1]
+      });
+    }
+  } catch (e) {
+    if (e.response) {
+      res.status(e.response.status).json(e.response.statusText);
+    } else {
+      console.error(e);
+      res.status(500).json({"error": "Internal error"});
+    }
+  }
+}
+
+function thisConnectionExists(subgraph, mnt1, mnt2) {
+  for(let i = 0; i < subgraph.length; i++) {
+    if((subgraph[i][0] == mnt1.id && subgraph[i][1] == mnt2.id) ||
+        (subgraph[i][1] == mnt1.id && subgraph[i][0] == mnt2.id)) {
+          return true;
+    }
+  }
+  return false;
+}
+
 function createRandomSubgraph(mountains) {
-    
   const subgraph = [];
 
   for(let i = 0; i < mountains.length; i++) {
@@ -104,7 +120,6 @@ function createRandomSubgraph(mountains) {
           subgraph.push([currMountain.id, nearestNeighbours[j].id]);
       }
   }
-  //console.log("nekineki" + subgraph);
   return subgraph;
 }
 
@@ -129,18 +144,18 @@ function getNNearestNeighbours(n, currMountain, mountains,
 
   for(let i = 0; i < mountains.length; i++) {
       
-      if(getAlreadyEstablishedConnections(mountains[i], subgraph) < maxAllowedConnectionsOfOneMountain) {
+      if(getAlreadyEstablishedConnections(mountains[i], subgraph) < maxAllowedConnectionsOfOneMountain && mountains[i].id != currMountain.id) {
           var dst = getDistance(currMountain, mountains[i]);
           
           var indexToInsert = getIndexToInsert(nearestNNeighbours, dst, currMountain)
           
-          if(indexToInsert < n) {
-              nearestNNeighbours.splice(indexToInsert, 0, mountains[i]);
+          if(indexToInsert < n && !thisConnectionExists(subgraph, currMountain, mountains[i])) {
+            nearestNNeighbours.splice(indexToInsert, 0, mountains[i]);
               if(nearestNNeighbours.length > n) {
                   nearestNNeighbours.slice(0, n);
               }
           }
-          //console.log(indexToInsert);
+
       }
 
   }
@@ -181,22 +196,7 @@ function getAlreadyEstablishedConnections(currMountain, subgraph) {
   return numberOfConnections;
 }
 
-async function register(req, res) {
-  axios.post('http://88.200.37.122:3000/api/collections/users/records', req.body)
-  .then(function (response) {
-    res.status(200).json(response);
-  })
-  .catch(function (error) {
-    if (error.response) {
-        res.status(error.response.status).json(error.response.data)
-    } else {
-        res.status(500).json(error);
-    }
-  });
-}
-
 module.exports = {
     login,
-    register,
-    createOrJoinGroup
+    register
 }

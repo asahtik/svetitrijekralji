@@ -70,6 +70,7 @@ Future<List<UserEntry>?> getUsersInGroup() async {
 }
 
 Future<void> flagAscent(String ascentId) async {
+  print("Flag");
   await http.put(getUri("flag/$ascentId"), headers: <String, String> {
     "Authorization": authStore.token
   }, body: {

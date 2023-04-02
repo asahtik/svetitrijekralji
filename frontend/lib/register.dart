@@ -168,7 +168,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 email,
                 password,
                 confirmPassword,
-                const SizedBox(height: 5),
                 groupName,
                 const SizedBox(height: 10),
                 errorText.isNotEmpty ? errorTextObj : const SizedBox.shrink(),
@@ -179,8 +178,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   },
                   child: const Text("Register"),
                 ),
-                const SizedBox(height: 10),
-                OutlinedButton(
+                const SizedBox(height: 2),
+                TextButton(
                   onPressed: () {
                     navigatorKey.currentState?.pop();
                   },

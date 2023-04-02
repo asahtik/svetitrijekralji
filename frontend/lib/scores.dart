@@ -43,21 +43,21 @@ class _ScoresPageState extends State<ScoresPage> {
                     "#${index + 1}",
                     style: TextStyle(
                       color: index == meIndex ? Colors.grey : Colors.black,
-                      fontSize: 15,
+                      fontSize: 20,
                     ),
                   ),
                   Text(
                     competitors[index].username,
                     style: TextStyle(
                       color: index == meIndex ? Colors.grey : Colors.black,
-                      fontSize: 15,
+                      fontSize: 20,
                     ),
                   ),
                   Text(
                     "${competitors[index].points} points",
                     style: TextStyle(
                       color: index == meIndex ? Colors.grey : Colors.black,
-                      fontSize: 15,
+                      fontSize: 20,
                     ),
                   ),
                 ],

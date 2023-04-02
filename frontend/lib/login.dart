@@ -107,8 +107,8 @@ class _LoginPageState extends State<LoginPage> {
                   },
                   child: const Text("Login"),
                 ),
-                const SizedBox(height: 10),
-                OutlinedButton(
+                const SizedBox(height: 2),
+                TextButton(
                   onPressed: () {
                     navigatorKey.currentState?.push(
                       MaterialPageRoute(builder: (context) => const RegisterPage()),
