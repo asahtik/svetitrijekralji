@@ -9,5 +9,6 @@ router.post('/register', auth.register);
 router.get('/hills', hills.getAllHills);
 router.get('/edges/:groupId', hills.getAllEdges);
 router.get('/hills/:userId', hills.getFlaggedHills);
+router.post('/test', auth.createOrJoinGroup);
 
 module.exports = router;
