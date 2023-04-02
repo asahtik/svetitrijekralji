@@ -143,7 +143,7 @@ class _MapPageState extends State<MapPage> {
               getCompetitors();
               getFlaggedHills();
               getAllEdges();
-              updatePosition();
+              updatePosition(true);
             }
           },
           tooltip: nearbyHill == null ? "Refresh" : (nearbyHillValid ? "Flag" : "Too soon"),
@@ -177,10 +177,10 @@ class _MapPageState extends State<MapPage> {
     getCompetitors();
     getFlaggedHills();
     getAllEdges();
-    updatePosition();
+    updatePosition(true);
   }
 
-  updatePosition() async {
+  updatePosition(reposition) async {
     Position position = await _determinePosition();
     lat = position.latitude;
     long = position.longitude;
@@ -188,7 +188,9 @@ class _MapPageState extends State<MapPage> {
     nearbyAscent = null;
     nearbyHillValid = true;
     getNearbyHill();
-    _mapController.move(LatLng(lat, long), _mapController.zoom);
+    if (reposition) {
+      _mapController.move(LatLng(lat, long), _mapController.zoom);
+    }
   }
 
   getNearbyHill() async {
@@ -394,13 +396,13 @@ class _MapPageState extends State<MapPage> {
       getCompetitors();
       getFlaggedHills();
       getAllEdges();
-      updatePosition();
+      updatePosition(false);
     });
     getAllAscents();
     getCompetitors();
     getAllHills();
     getFlaggedHills();
     getAllEdges();
-    updatePosition();
+    updatePosition(true);
   }
 }
