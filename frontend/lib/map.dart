@@ -1,6 +1,5 @@
 import "package:flutter/material.dart";
 
-
 import "package:flutter_map/flutter_map.dart";
 import "package:flutter_map/plugin_api.dart";
 import "package:hribolazci/globals.dart";
@@ -23,11 +22,21 @@ class _MapPageState extends State<MapPage> {
   double lat = 46.056946;
   double long = 14.505751;
 
+  String position = "?";
+  String points = "?";
+
   bool showAllHills = true;
+  HillEntry? nearbyHill;
+  AscentEntry? nearbyAscent;
+  bool nearbyHillValid = true;
 
   List<HillEntry> allHills = [];
+  List<AscentEntry> allAscents = [];
   List<HillEntry> flaggedHills = [];
   List<EdgeEntry> edges = [];
+  List<EdgeEntry> flaggedEdges = [];
+
+  List<UserEntry> competitors = [];
 
   final _mapController = MapController();
 
@@ -45,7 +54,7 @@ class _MapPageState extends State<MapPage> {
               mapController: _mapController,
               options: MapOptions(
                 center: LatLng(lat, long),
-                zoom: 10.0,
+                zoom: 12.0,
               ),
               nonRotatedChildren: [
                 AttributionWidget.defaultWidget(
@@ -58,7 +67,15 @@ class _MapPageState extends State<MapPage> {
                   urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                   userAgentPackageName: "si.fri.hribolazci",
                 ),
-                CircleLayer(
+                showAllHills ? PolylineLayer(
+                  polylineCulling: true,
+                  polylines: drawEdges(),
+                ) : const SizedBox.shrink(),
+                PolylineLayer(
+                  polylineCulling: true,
+                  polylines: drawOwnedEdges(),
+                ),
+                showAllHills ? CircleLayer(
                   circles: allHills.map((h) => CircleMarker(
                     point: LatLng(h.latitude, h.longitude),
                     radius: 1000,
@@ -67,10 +84,16 @@ class _MapPageState extends State<MapPage> {
                     color: const Color.fromARGB(0, 0, 0, 0),
                     useRadiusInMeter: true,
                   )).toList(),
-                ),
-                PolylineLayer(
-                  polylineCulling: true,
-                  polylines: drawEdges(),
+                ) : const SizedBox.shrink(),
+                CircleLayer(
+                  circles: flaggedHills.map((h) => CircleMarker(
+                    point: LatLng(h.latitude, h.longitude),
+                    radius: 1000,
+                    borderStrokeWidth: 2,
+                    borderColor: const Color.fromARGB(255, 0, 0, 255),
+                    color: const Color.fromARGB(0, 0, 0, 0),
+                    useRadiusInMeter: true,
+                  )).toList(),
                 ),
               ],
             ),
@@ -82,18 +105,28 @@ class _MapPageState extends State<MapPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
                     child: Text(
-                      "#4 (3140 points)",
-                      style: TextStyle(
+                      "#$position ($points points)",
+                      style: const TextStyle(
                         color: Colors.white,
                       ),
                     ),
                   ),
-                  IconButton(onPressed: () {
-                    navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) => const ScoresPage()));
-                  }, icon: const Icon(Icons.flutter_dash))
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Switch(value: showAllHills, onChanged: (value) {
+                        setState(() {
+                          showAllHills = value;
+                        });
+                      }),
+                      IconButton(onPressed: () {
+                        navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) => const ScoresPage()));
+                      }, icon: const Icon(Icons.analytics_outlined, color: Colors.white,))
+                    ],
+                  ),
                 ],
               ),
             )
@@ -104,13 +137,20 @@ class _MapPageState extends State<MapPage> {
         padding: const EdgeInsets.fromLTRB(0, 0, 0, 20 + 10),
         child: FloatingActionButton(
           onPressed: () {
-            // TODO
-            getAllHills();
-            getFlaggedHills();
-            getAllEdges();
+            if (nearbyHill != null && nearbyAscent != null) {
+              if (nearbyHillValid) {
+                flag(nearbyAscent!.id);
+              }
+            } else {
+              getAllAscents();
+              getCompetitors();
+              getFlaggedHills();
+              getAllEdges();
+              updatePosition();
+            }
           },
-          tooltip: "Refresh",
-          child: const Icon(Icons.refresh),
+          tooltip: nearbyHill == null ? "Refresh" : (nearbyHillValid ? "Flag" : "Too soon"),
+          child: Icon(nearbyHill == null ? Icons.refresh : (nearbyHillValid ? Icons.flag : Icons.access_time)),
         ),
       ),
     );
@@ -133,11 +173,40 @@ class _MapPageState extends State<MapPage> {
     return await Geolocator.getCurrentPosition();
   }
 
+  flag(String ascendId) async {
+    http.flagAscent(ascendId);
+
+    getAllAscents();
+    getCompetitors();
+    getFlaggedHills();
+    getAllEdges();
+    updatePosition();
+  }
+
   updatePosition() async {
     Position position = await _determinePosition();
     lat = position.latitude;
     long = position.longitude;
-    _mapController.move(LatLng(lat, long), 10);
+    getNearbyHill();
+    _mapController.move(LatLng(lat, long), 12);
+  }
+
+  getNearbyHill() async {
+    for (var hill in allHills) {
+      final distance = Geolocator.distanceBetween(lat, long, hill.latitude, hill.longitude);
+      if (distance < maxDistance) {
+        if (allAscents.any((a) => a.hillId == hill.id && a.userId.isNotEmpty && (DateTime.now().difference(a.created)).inHours < 1)) {
+          nearbyHillValid = false;
+        } else {
+          nearbyHillValid = true;
+        }
+        setState(() {
+          nearbyAscent = allAscents.firstWhere((a) => a.hillId == hill.id);
+          nearbyHill = hill;
+        });
+        break;
+      }
+    }
   }
 
   getAllHills() async {
@@ -145,6 +214,15 @@ class _MapPageState extends State<MapPage> {
     if (response != null) {
       setState(() {
         allHills = response;
+      });
+    }
+  }
+
+  getAllAscents() async {
+    var response = await http.getAllAscents();
+    if (response != null) {
+      setState(() {
+        allAscents = response;
       });
     }
   }
@@ -160,24 +238,45 @@ class _MapPageState extends State<MapPage> {
 
   getFlaggedHills() async {
     var response = await http.getFlaggedHills();
-    print("Flagged hills");
     if (response != null) {
       setState(() {
         flaggedHills = response;
-        print(flaggedHills);
       });
     }
   }
 
-  HillEntry findHillEntry(String hillId) {
-    final list = showAllHills ? allHills : flaggedHills;
-    return list.firstWhere((h) => h.id == hillId);
+  getCompetitors() async {
+    var response = await http.getUsersInGroup();
+    if (response != null) {
+      setState(() {
+        competitors = response;
+        competitors.sort((a, b) => a.points >= b.points ? -1 : 1);
+        for (var i = 0; i < competitors.length; i++) {
+          final c = competitors[i];
+          if (c.id == authStore.user!.id) {
+            points = c.points.toString();
+            position = (i + 1).toString();
+            break;
+          }
+        }
+      });
+    }
+  }
+
+  HillEntry? findHillEntry(String hillId, bool onlyFlagged) {
+    final list = !onlyFlagged ? allHills : flaggedHills;
+    for (var hill in list) {
+      if (hill.id == hillId) {
+        return hill;
+      }
+    }
+    return null;
   }
 
   List<Polyline> drawEdges() {
     return edges.map((e) {
-      final hill1 = findHillEntry(e.hill1);
-      final hill2 = findHillEntry(e.hill2);
+      final hill1 = findHillEntry(e.hill1, false)!;
+      final hill2 = findHillEntry(e.hill2, false)!;
       return Polyline(
         points: [
           LatLng(hill1.latitude, hill1.longitude),
@@ -189,9 +288,30 @@ class _MapPageState extends State<MapPage> {
     }).toList();
   }
 
+  List<Polyline> drawOwnedEdges() {
+    List<Polyline> list = [];
+    for (var e in edges) {
+      final hill1 = findHillEntry(e.hill1, false)!;
+      final hill2 = findHillEntry(e.hill2, false)!;
+      if (allAscents.any((a) => a.hillId == hill1.id) && allAscents.any((a) => a.hillId == hill2.id)) {
+        list.add(Polyline(
+          points: [
+            LatLng(hill1.latitude, hill1.longitude),
+            LatLng(hill2.latitude, hill2.longitude),
+          ],
+          strokeWidth: 1,
+          color: const Color.fromARGB(255, 0, 0, 255),
+        ));
+      }
+    }
+    return list;
+  }
+
   @override
   initState() {
     super.initState();
+    getAllAscents();
+    getCompetitors();
     getAllHills();
     getFlaggedHills();
     getAllEdges();

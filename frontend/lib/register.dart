@@ -18,6 +18,7 @@ class _RegisterPageState extends State<RegisterPage> {
   var emailCtrl = TextEditingController();
   var passwordCtrl = TextEditingController();
   var confirmPasswordCtrl = TextEditingController();
+  var groupNameCtrl = TextEditingController();
 
   updateErrorText(String text) {
     setState(() {
@@ -32,8 +33,9 @@ class _RegisterPageState extends State<RegisterPage> {
       final name = nameCtrl.text;
       final email = emailCtrl.text;
       final password = confirmPasswordCtrl.text;
+      final groupName = groupNameCtrl.text;
 
-      final error = await authStore.register(username, email, password, name);
+      final error = await authStore.register(username, email, password, name, groupName);
       if (error != null) {
         updateErrorText(error);
       } else {
@@ -131,6 +133,20 @@ class _RegisterPageState extends State<RegisterPage> {
         _register();
       },
     );
+    var groupName = TextFormField(
+      controller: groupNameCtrl,
+      keyboardType: TextInputType.name,
+      decoration: const InputDecoration(
+        hintText: "Enter group name",
+      ),
+      autofocus: false,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return "Group name cannot be empty";
+        }
+        return null;
+      },
+    );
     var errorTextObj = Text(
       errorText,
       style: const TextStyle(color: Colors.red),
@@ -152,6 +168,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 email,
                 password,
                 confirmPassword,
+                const SizedBox(height: 5),
+                groupName,
                 const SizedBox(height: 10),
                 errorText.isNotEmpty ? errorTextObj : const SizedBox.shrink(),
                 const SizedBox(height: 10),

@@ -55,7 +55,7 @@ class AuthStore {
     }
   }
 
-  Future<String?> register(username, email, password, name) async {
+  Future<String?> register(username, email, password, name, groupName) async {
     final response = await http.post(getUri("register"), body: jsonEncode(<String, dynamic>{
       "username": username,
       "email": email,
@@ -63,6 +63,7 @@ class AuthStore {
       "password": password,
       "passwordConfirm": password,
       "name": name,
+      "groupname": groupName,
     }), headers: <String, String>{
       "Content-Type": "application/json",
     });

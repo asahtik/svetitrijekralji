@@ -5,6 +5,7 @@ import "config.dart";
 import "auth.dart";
 
 const String emailRegex = r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?)*$";
+const int maxDistance = 100;
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 const secureStorage = FlutterSecureStorage();
@@ -50,6 +51,20 @@ class HillEntry {
     height = json["height"];
     latitude = json["latitude"];
     longitude = json["longitude"];
+  }
+}
+
+class AscentEntry {
+  late String id;
+  late String userId;
+  late String hillId;
+  late DateTime created;
+
+  AscentEntry.fromJson(Map<String, dynamic> json) {
+    id = json["id"];
+    userId = json["user"];
+    hillId = json["hill"];
+    created = DateTime.parse(json["created"]);
   }
 }
 
