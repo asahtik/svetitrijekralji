@@ -1,2 +1,2 @@
-const api = "141.255.211.59:4200";
+const api = "127.0.0.1:4200";
 const apiSecure = false;
